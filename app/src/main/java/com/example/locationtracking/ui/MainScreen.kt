@@ -25,6 +25,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.locationtracking.vm.TrackingViewModel
 
@@ -39,7 +40,8 @@ fun MainScreen(
     val uiState by viewModel.uiState.collectAsState()
     val lines by viewModel.lines.collectAsState()
 
-    LaunchedEffect(Unit) {
+
+    LaunchedEffect(uiState) {
         viewModel.loadLines()
     }
     Column(
@@ -50,8 +52,10 @@ fun MainScreen(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            text = "Status: ${if (uiState.isTracking) "TRACKING" else "STOPPED"}",
-            style = MaterialTheme.typography.headlineSmall
+            text = if (uiState.isTracking) "TRACKING" else "STOPPED",
+            color = if (uiState.isTracking) MaterialTheme.colorScheme.onBackground else Color.Gray,
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold
         )
 
         Spacer(Modifier.height(16.dp))

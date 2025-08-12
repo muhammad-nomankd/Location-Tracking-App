@@ -12,6 +12,7 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.example.locationtracking.MainActivity
+import com.example.locationtracking.service.ForegroundLocationService
 import javax.inject.Inject
 
 class NotificationHelper @Inject constructor() {
@@ -38,53 +39,6 @@ class NotificationHelper @Inject constructor() {
         }
     }
 
-    /* fun showTrackingNotification(context: Context) {
-         createNotificationChannel(context)
-
-         // Create intent to open app when notification is tapped
-         val intent = Intent(context, MainActivity::class.java).apply {
-             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-         }
-
-         val pendingIntentFlags =
-             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-
-         val pendingIntent = PendingIntent.getActivity(context, 0, intent, pendingIntentFlags)
-
-         // Build the notification
-         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
-             .setSmallIcon(android.R.drawable.ic_menu_mylocation) // Use system location icon
-             .setContentTitle("Location Tracking Active")
-             .setContentText("Your location is being tracked and saved")
-             .setStyle(NotificationCompat.BigTextStyle()
-                 .bigText("Location tracking is currently active. Your GPS coordinates are being recorded every 5 seconds. Tap to view current location."))
-             .setPriority(NotificationCompat.PRIORITY_DEFAULT) // Important for visibility
-             .setContentIntent(pendingIntent)
-             .setAutoCancel(false) // Don't dismiss when tapped
-             .setOngoing(true) // Makes it persistent
-             .setShowWhen(true)
-             .setWhen(System.currentTimeMillis())
-             .setColor(0xFF0000FF.toInt()) // Blue color
-             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-             .build()
-
-         try {
-             val notificationManager = NotificationManagerCompat.from(context)
-
-             if (!notificationManager.areNotificationsEnabled()) {
-                 Log.e("NotificationHelper", "Notifications are disabled for this app!")
-                 return
-             }
-
-             notificationManager.notify(NOTIFICATION_ID, notification)
-             Log.d("NotificationHelper", "Notification posted with ID: $NOTIFICATION_ID")
-
-         } catch (e: SecurityException) {
-             Log.e("NotificationHelper", "SecurityException: Missing notification permission", e)
-         } catch (e: Exception) {
-             Log.e("NotificationHelper", "Exception showing notification", e)
-         }
-     }*/
 
     fun hideTrackingNotification(context: Context) {
         Log.d("NotificationHelper", "Hiding tracking notification")
@@ -118,9 +72,8 @@ class NotificationHelper @Inject constructor() {
             flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }
 
-        val stopTrackingIntent = Intent(context, MainActivity::class.java).apply {
-            action = "STOP_TRACKING"
-            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        val stopTrackingIntent = Intent(context, ForegroundLocationService::class.java).apply {
+            action = ForegroundLocationService.ACTION_STOP
         }
 
         val pendingIntentFlags = PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
@@ -129,8 +82,8 @@ class NotificationHelper @Inject constructor() {
             context, 0, openAppIntent, pendingIntentFlags
         )
 
-        val stopTrackingPendingIntent = PendingIntent.getActivity(
-            context, 1, stopTrackingIntent, pendingIntentFlags
+        val stopTrackingPendingIntent = PendingIntent.getService(
+            context, 1, stopTrackingIntent,PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
 
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
@@ -138,10 +91,11 @@ class NotificationHelper @Inject constructor() {
             .setContentText("Tap to view current location")
             .setSmallIcon(R.drawable.ic_menu_mylocation)
             .setContentIntent(openAppPendingIntent).setOngoing(true)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
+            .setStyle(NotificationCompat.BigTextStyle()
+                .bigText("Location tracking is currently active. Your GPS coordinates are being recorded every 5 seconds. Tap to view current location."))
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC).setAutoCancel(false)
-            // Add stop button to notification
             .addAction(
                 R.drawable.ic_media_pause, "Stop Tracking", stopTrackingPendingIntent
             ).build()

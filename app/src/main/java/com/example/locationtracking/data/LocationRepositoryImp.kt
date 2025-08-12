@@ -30,14 +30,11 @@ class LocationRepositoryImpl @Inject constructor(
     override fun observeLastLocation(): Flow<Location?> = _lastLocation.asStateFlow()
 
     private var locationCallback: LocationCallback? = null
-    private var isTracking = false
+    var isUpdating = false
 
     @RequiresPermission(allOf = [Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION])
     override suspend fun startLocationUpdates(intervalMs: Long) {
-        Log.d("LocationRepo", "startLocationUpdates called, currently tracking: $isTracking")
-
-        if (isTracking) {
-            Log.d("LocationRepo", "Already tracking, ignoring start request")
+        if (isUpdating) {
             return
         }
 
@@ -48,7 +45,7 @@ class LocationRepositoryImpl @Inject constructor(
         locationCallback = object : LocationCallback() {
             @RequiresApi(Build.VERSION_CODES.O)
             override fun onLocationResult(result: LocationResult) {
-                if (!isTracking) {
+                if (!isUpdating) {
                     Log.d("LocationRepo", "Received location but not tracking, ignoring")
                     return
                 }
@@ -64,19 +61,15 @@ class LocationRepositoryImpl @Inject constructor(
 
         try {
             fused.requestLocationUpdates(request, locationCallback!!, Looper.getMainLooper())
-            isTracking = true
-            Log.d("LocationRepo", "Location updates started successfully")
+            isUpdating = true
         } catch (e: Exception) {
-            Log.e("LocationRepo", "Error starting location updates", e)
             locationCallback = null
             throw e
         }
     }
 
     override suspend fun stopLocationUpdates() {
-        Log.d("LocationRepo", "stopLocationUpdates called, currently tracking: $isTracking")
-
-        isTracking = false
+        isUpdating = false
 
         val callback = locationCallback
         if (callback == null) {
@@ -101,4 +94,12 @@ class LocationRepositoryImpl @Inject constructor(
     override fun clearLogFile() {
         fileDataSource.clearAllLines()
     }
+
+
+
+
+}
+
+object TrackingState {
+    val isTracking = MutableStateFlow(false)
 }
