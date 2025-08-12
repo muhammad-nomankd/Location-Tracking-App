@@ -32,7 +32,6 @@ class ForegroundLocationService : Service() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val NOTIF_ID = 1
     private var tracking = false
-    private val updateIntervalMs = 500L
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -67,15 +66,6 @@ class ForegroundLocationService : Service() {
             val notification = notificationHelper.buildTrackingNotification(this)
             startForeground(NOTIF_ID, notification)
 
-            serviceScope.launch {
-                try {
-                    repository.startLocationUpdates(updateIntervalMs)
-                } catch (e: SecurityException) {
-                    stopSelf()
-                } catch (e: Exception) {
-                    stopSelf()
-                }
-            }
         } catch (e: Exception) {
             tracking = false
             stopSelf()
@@ -89,18 +79,12 @@ class ForegroundLocationService : Service() {
         }
 
         tracking = false
-
         serviceScope.launch {
             try {
-                repository.stopLocationUpdates()
-            } catch (e: Exception) {
-                Log.e("ForegroundService", "Exception stopping location updates", e)
-            } finally {
-                try {
-                    stopForeground(STOP_FOREGROUND_REMOVE)
-                } catch (e: Exception) {
-                    Log.e("ForegroundService", "Error stopping foreground", e)
-                }
+                stopForeground(STOP_FOREGROUND_REMOVE)
+            } catch (e: Exception){
+                Log.e("ForegroundService", "Error stopping foreground", e)
+            }finally {
                 stopSelf()
             }
         }
@@ -111,7 +95,7 @@ class ForegroundLocationService : Service() {
 
         serviceScope.launch {
             try {
-                repository.stopLocationUpdates()
+                repository.stopLocationUpdates(this@ForegroundLocationService)
             } catch (e: Exception) {
                 Log.e("ForegroundService", "Error stopping updates during destroy", e)
             }
@@ -125,27 +109,23 @@ class ForegroundLocationService : Service() {
         const val ACTION_STOP = "com.example.locationtracker.action.STOP"
 
         fun startService(context: Context) {
-            Log.d("ForegroundService", "Starting service via companion")
             val intent = Intent(context, ForegroundLocationService::class.java).apply {
                 action = ACTION_START
             }
             try {
                 ContextCompat.startForegroundService(context, intent)
-                Log.d("ForegroundService", "Service start intent sent")
             } catch (e: Exception) {
                 Log.e("ForegroundService", "Exception starting service", e)
             }
         }
 
         fun stopService(context: Context) {
-            Log.d("ForegroundService", "Stopping service via companion")
             val intent = Intent(context, ForegroundLocationService::class.java).apply {
                 action = ACTION_STOP
             }
             try {
                 context.startService(intent)
             } catch (e: Exception) {
-                Log.e("ForegroundService", "Exception stopping service", e)
                 try {
                     context.stopService(intent)
                 } catch (fallbackException: Exception) {

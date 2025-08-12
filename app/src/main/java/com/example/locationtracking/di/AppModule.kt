@@ -4,6 +4,8 @@ import android.content.Context
 import com.example.locationtracking.data.LocalFileDataSource
 import com.example.locationtracking.data.LocationRepositoryImpl
 import com.example.locationtracking.domain.LocationRepository
+import com.example.locationtracking.service.ForegroundLocationService
+import com.example.locationtracking.util.NotificationHelper
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
 import dagger.Module
@@ -32,10 +34,23 @@ object AppModule {
 
     @Provides
     @Singleton
+    fun providesNotificationHelper(): NotificationHelper{
+        return NotificationHelper()
+    }
+
+    @Provides
+    @Singleton
+    fun providesForegroundLocationService(): ForegroundLocationService{
+        return ForegroundLocationService()
+    }
+    @Provides
+    @Singleton
     fun provideLocationRepository(
         fused: FusedLocationProviderClient,
-        fileDataSource: LocalFileDataSource
+        fileDataSource: LocalFileDataSource,
+        notificationHelper: NotificationHelper
+
     ): LocationRepository {
-        return LocationRepositoryImpl(fused, fileDataSource)
+        return LocationRepositoryImpl(fused, fileDataSource,notificationHelper)
     }
 }

@@ -1,13 +1,16 @@
 package com.example.locationtracking.data
 
-import com.example.locationtracking.domain.LocationRepository
 import android.Manifest
+import android.content.Context
 import android.location.Location
 import android.os.Build
 import android.os.Looper
 import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.annotation.RequiresPermission
+import com.example.locationtracking.domain.LocationRepository
+import com.example.locationtracking.service.ForegroundLocationService
+import com.example.locationtracking.util.NotificationHelper
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationRequest
@@ -23,8 +26,8 @@ import javax.inject.Singleton
 @Singleton
 class LocationRepositoryImpl @Inject constructor(
     private val fused: FusedLocationProviderClient,
-    private val fileDataSource: LocalFileDataSource
-) : LocationRepository {
+    private val fileDataSource: LocalFileDataSource,
+    private val notificationHelper: NotificationHelper) : LocationRepository {
 
     private val _lastLocation = MutableStateFlow<Location?>(null)
     override fun observeLastLocation(): Flow<Location?> = _lastLocation.asStateFlow()
@@ -33,14 +36,13 @@ class LocationRepositoryImpl @Inject constructor(
     var isUpdating = false
 
     @RequiresPermission(allOf = [Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION])
-    override suspend fun startLocationUpdates(intervalMs: Long) {
+    override suspend fun startLocationUpdates(intervalMs: Long,context: Context) {
         if (isUpdating) {
             return
         }
 
         val request = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, intervalMs)
-            .setMinUpdateDistanceMeters(0f)
-            .build()
+            .setMinUpdateDistanceMeters(0f).build()
 
         locationCallback = object : LocationCallback() {
             @RequiresApi(Build.VERSION_CODES.O)
@@ -61,6 +63,8 @@ class LocationRepositoryImpl @Inject constructor(
 
         try {
             fused.requestLocationUpdates(request, locationCallback!!, Looper.getMainLooper())
+            ForegroundLocationService.startService(context)
+
             isUpdating = true
         } catch (e: Exception) {
             locationCallback = null
@@ -68,19 +72,17 @@ class LocationRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun stopLocationUpdates() {
+    override suspend fun stopLocationUpdates(context: Context) {
         isUpdating = false
 
         val callback = locationCallback
         if (callback == null) {
-            Log.d("LocationRepo", "locationCallback is null, nothing to stop")
             return
         }
 
         try {
-            Log.d("LocationRepo", "Removing location updates with callback: $callback")
             fused.removeLocationUpdates(callback)
-            Log.d("LocationRepo", "Location updates removed successfully")
+            ForegroundLocationService.stopService(context)
         } catch (e: Exception) {
             Log.e("LocationRepo", "Error removing location updates", e)
         } finally {
@@ -94,8 +96,6 @@ class LocationRepositoryImpl @Inject constructor(
     override fun clearLogFile() {
         fileDataSource.clearAllLines()
     }
-
-
 
 
 }

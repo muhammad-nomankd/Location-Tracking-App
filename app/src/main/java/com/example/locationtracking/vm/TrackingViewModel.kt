@@ -35,9 +35,7 @@ class TrackingViewModel @Inject constructor(
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(TrackingUiState())
     val uiState: StateFlow<TrackingUiState> = _uiState.asStateFlow()
-    val isTracking = repo.isUpdating
 
-    val isTrackingService = TrackingState.isTracking.asStateFlow()
 
     init {
         viewModelScope.launch {
@@ -60,10 +58,13 @@ class TrackingViewModel @Inject constructor(
     @RequiresApi(Build.VERSION_CODES.O)
     fun onStartTracking(context: Context) {
         try {
-            _uiState.value = _uiState.value.copy(isTracking = true)
-            TrackingState.isTracking.value = true
-            notificationHelper.checkNotificationPermission(context)
-            ForegroundLocationService.startService(context)
+            viewModelScope.launch {
+                _uiState.value = _uiState.value.copy(isTracking = true)
+                 /*notificationHelper.checkNotificationPermission(context)
+                 ForegroundLocationService.startService(context)*/
+                startTrackingUseCase(1000L)
+            }
+
         } catch (e: Exception) {
             Log.e("TrackingViewModel", "Exception starting service", e)
             _uiState.value = _uiState.value.copy(isTracking = false)
@@ -91,10 +92,6 @@ class TrackingViewModel @Inject constructor(
             try {
 
                 stopTrackingUseCase()
-
-                ForegroundLocationService.stopService(context)
-
-                notificationHelper.hideTrackingNotification(context)
 
                 loadLines()
 
