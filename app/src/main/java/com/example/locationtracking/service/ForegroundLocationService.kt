@@ -62,14 +62,17 @@ class ForegroundLocationService : Service() {
 
         tracking = true
 
-        try {
-            val notification = notificationHelper.buildTrackingNotification(this)
-            startForeground(NOTIF_ID, notification)
+        serviceScope.launch {
+            try {
+                val notification = notificationHelper.buildTrackingNotification(this@ForegroundLocationService)
+                startForeground(NOTIF_ID, notification)
 
-        } catch (e: Exception) {
-            tracking = false
-            stopSelf()
+            } catch (e: Exception) {
+                tracking = false
+                stopSelf()
+            }
         }
+
     }
 
     private fun stopForegroundServiceWork() {
